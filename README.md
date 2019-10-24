@@ -22,7 +22,7 @@ If you haven't used GitHub before, it's not too hard to get started.
 
 To get the repo onto the computer, run the following command in your terminal/command prompt in your home directory:
 ```
-git clone https://github.com/txconvergent/f19-health-calendar.git
+git clone https://github.com/TxConvergentAdmin/calendar.git
 ```
 
 After finishing running it, you should have a new folder in your home directory called `f19-health-calendar/`. Go into it and you should see the contents of this repo.
