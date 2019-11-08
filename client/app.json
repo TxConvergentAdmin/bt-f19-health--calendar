@@ -2,6 +2,7 @@
   "expo": {
     "name": "Convergent Calendar",
     "slug": "convergent-calendar",
+    "entryPoint": "./src/App.js",
     "privacy": "public",
     "sdkVersion": "35.0.0",
     "platforms": [
