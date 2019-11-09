@@ -1,5 +1,5 @@
 import React, { Component } from "react"
-import { View, StyleSheet, Alert } from "react-native"
+import { View, StyleSheet } from "react-native"
 import { Container, Content, Text, Fab, Icon } from "native-base"
 import EventList from "../components/EventList"
 import QuestionList from "../components/QuestionList"
@@ -8,10 +8,6 @@ export default class Home extends Component {
 
     constructor () {
         super()
-    }
-
-    componentDidMount () {
-        
     }
 
     render () {
@@ -29,8 +25,8 @@ export default class Home extends Component {
                     </View>
                 </Content>
                 <View>
-                    <Fab>
-                        <Icon name="ios-add" onPress={() => this.props.navigation.navigate("Create Event")} />
+                    <Fab onPress={() => this.props.navigation.navigate("Create Event")} >
+                        <Icon name="ios-add"/>
                     </Fab>
                 </View>
             </Container>

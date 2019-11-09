@@ -14,12 +14,14 @@ class App extends Component {
         super()
         this.state = {
             isLoading: true,
+            timeoutDone: false,
             initialRoute: null
         }
     }
 
     // Check if this is our first time running the app and show the info screen first if it is
     async componentDidMount () {
+        setTimeout(() => this.setState({ timeoutDone: true }), 3 * 1000)
         //await SecureStore.deleteItemAsync("initDone")
         const result = await SecureStore.getItemAsync("initDone")
         let route = "Main"
@@ -31,9 +33,9 @@ class App extends Component {
     }
 
     render () {
-        const { isLoading, initialRoute } = this.state
+        const { isLoading, timeoutDone, initialRoute } = this.state
         // Show a splash while loading the app
-        if (isLoading) 
+        if (isLoading || !timeoutDone) 
             return <Splash />
         // Now show our app once we're done
         const Container = createAppContainer(
