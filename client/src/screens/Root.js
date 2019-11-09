@@ -7,7 +7,6 @@ import Calendar from "./Calendar"
 import CreateEvent from "./CreateEvent"
 import {CustomFooter as Footer} from "../components/Footer.js"
 
-
 const tabNavigator = createBottomTabNavigator(
     {
         "Home": { 

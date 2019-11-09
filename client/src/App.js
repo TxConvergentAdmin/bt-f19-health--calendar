@@ -1,12 +1,58 @@
-import React, {Component} from "react"
+import React, { Component } from "react"
 import { registerRootComponent } from "expo"
-import RootView from "./screens/RootView"
+import { createAppContainer } from "react-navigation"
+import { createStackNavigator } from "react-navigation-stack"
+import * as SecureStore from "expo-secure-store"
+
+import Root from "./screens/Root"
+import Init from "./screens/Init"
+import Splash from "./screens/Splash"
 
 class App extends Component {
 
-    render () {
-        return <RootView />
+    constructor () {
+        super()
+        this.state = {
+            isLoading: true,
+            initialRoute: null
+        }
     }
+
+    // Check if this is our first time running the app and show the info screen first if it is
+    async componentDidMount () {
+        //await SecureStore.deleteItemAsync("initDone")
+        const result = await SecureStore.getItemAsync("initDone")
+        let route = "Main"
+        if (result === null) {
+            await SecureStore.setItemAsync("initDone", "foo")
+            route = "onInit"
+        } 
+        this.setState({ isLoading: false, initialRoute: route })
+    }
+
+    render () {
+        const { isLoading, initialRoute } = this.state
+        // Show a splash while loading the app
+        if (isLoading) 
+            return <Splash />
+        // Now show our app once we're done
+        const Container = createAppContainer(
+            createStackNavigator(
+                {
+                    Main: Root,
+                    onInit: Init
+                },
+                {
+                    mode: "modal",
+                    headerMode: "none",
+                    initialRouteName: initialRoute
+                }
+            )
+        )
+        return <Container />
+    }
+
 }
+
 
 registerRootComponent(App)
