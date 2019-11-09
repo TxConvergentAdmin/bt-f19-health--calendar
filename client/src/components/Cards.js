@@ -1,6 +1,7 @@
 import React, { Component } from "react"
 import { StyleSheet, View, Alert } from "react-native"
 import { Container, Title, Text, Body, Button, Card, CardItem } from "native-base"
+import moment from "moment"
 import Slider from "./Slider"
 
 class DefaultCard extends Component {
@@ -35,22 +36,23 @@ class QuestionCard extends Component {
 
 class ButtonQuestionCard extends Component {
 
-    handleBtnClick (btnInfo) {
-        this.props.onAnswer(btnInfo)
+    handleBtnClick (answer) {
+        console.log("Pressed!")
+        this.props.onAnswer(answer)
     }
 
     render () {
         return (
             <QuestionCard question={this.props.question}>
                 <View style={styles.btnFlexCon}>
-                    {this.props.buttonChoices.map((btn, i) => {
+                    {this.props.buttonChoices.map((answer, i) => {
                         return (
                             <Button 
                             small
                             style={styles.cardBtn} 
                             key={i} 
-                            onPress={this.handleBtnClick.bind(this, btn)}>
-                                <Text>{btn.text}</Text>
+                            onPress={this.handleBtnClick.bind(this, answer)}>
+                                <Text>{answer.text}</Text>
                             </Button>
                         )
                     })}
@@ -86,8 +88,8 @@ class SliderQuestionCard extends Component {
                     <Slider
                         style={styles.cardSlider}
                         onValueChange={(value) => this.updateState(value)}
-                        minimumValue={0}
-                        maximumValue={1}
+                        minimumValue={this.props.minValue}
+                        maximumValue={this.props.maxValue}
                     />
                     <Button 
                         small
@@ -97,6 +99,57 @@ class SliderQuestionCard extends Component {
                     </Button>
                 </View>
             </QuestionCard>
+        )
+    }
+
+}
+
+class EventCard extends Component {
+
+    constructor (props) {
+        super(props)
+        this.state = { timeUntilEvent: this.getTimeUntilEvent() }
+    }
+
+    componentDidMount () {
+        setInterval(() => {
+            const tu = this.getTimeUntilEvent()
+            console.log(tu)
+            this.setState({ timeUntilEvent: tu })
+        }, 1000 * 60)
+    }
+
+    // date is a Date object, returns a string
+    getTimeUntilEvent () {
+        const event = this.props.eventObject
+        let timeUntil = (event.date - new Date()) / 1000 // Put in terms of seconds
+        if (timeUntil > 0) {
+            let unit
+            // Put in terms of either days, hours, or minutes
+            if (timeUntil > 3600 * 24) {
+                timeUntil /= (3600 * 24)
+                unit = "day"
+            } else if (timeUntil > 3600) {
+                timeUntil /= 3600
+                unit = "hour"
+            } else {
+                timeUntil /= 60
+                unit = "minute"
+            }
+            timeUntil = Math.floor(timeUntil)
+            return `${timeUntil} ${timeUntil > 1 ? unit + "s" : unit}`
+        } else {
+            return null
+        }
+    }
+
+    render () {
+        const event = this.props.eventObject || defaultEvent
+        const tu = this.state.timeUntilEvent
+        return (
+            <DefaultCard title={ tu === null ? `${event.title} happening now.` : `${event.title} in ${tu}.` }>
+                <Text>At {`${event.location.line1}, ${event.location.city} ${event.location.state}`}</Text>
+            </DefaultCard>
         )
     }
 
@@ -137,4 +190,4 @@ const styles = {
     }
 }
 
-export { DefaultCard, ButtonQuestionCard, SliderQuestionCard }
+export { EventCard, ButtonQuestionCard, SliderQuestionCard }
