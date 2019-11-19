@@ -22,7 +22,7 @@ class App extends Component {
     // Check if this is our first time running the app and show the info screen first if it is
     async componentDidMount () {
         setTimeout(() => this.setState({ timeoutDone: true }), 3 * 1000)
-        //await SecureStore.deleteItemAsync("initDone")
+        // await SecureStore.deleteItemAsync("initDone")
         const result = await SecureStore.getItemAsync("initDone")
         let route = "Main"
         if (result === null) {
