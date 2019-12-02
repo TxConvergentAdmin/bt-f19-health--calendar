@@ -1,31 +1,153 @@
 from flask import Flask, request, jsonify
 from pymongo import MongoClient
+from pymongo.collection import ReturnDocument
+from bson.objectid import ObjectId
 from google_calendar import gcal
+from datetime import datetime
 
-# Instantiate flask app
 app = Flask(__name__)
 
 # Set up mongodb
-client = MongoClient("localhost", 27017)
-db = client.caren
-collection = db["events"]
+mongo_host = "localhost"
+mongo_port = 27017
+client = MongoClient(mongo_host, mongo_port)
+# Get collections from db
+db = client["caren"]
+events = db["events"]
+users = db["users"]
 
-# Routes we want
+DEFAULT_UID = "i_stan_tswift"
+DEFAULT_CALID = "8luv5btr9qiv0e9ifglnbvqfg8@group.calendar.google.com" # this is so dirty
 
-#     createEvent (POST) – Create new event in our database, marking it with event priority and other info, done through directly
-#         inputting event info. .Update user's GCalendar.
+def reset_db (uid):
+    users.find_one_and_update({ "user_id": uid }, { "$set": { "events": [] } })
+    events.delete_many({})
 
-#     createEventFromQuestions (POST) – Create new event in our database based on answers given by prompted questions. Updates 
-#         the user's GCalendar as well. (involves ML)
+def populate_gcal_event (cal_id, db_event):
+    eid = db_event["event_info"]
+    result = gcal.events().get(calendarId=cal_id, eventId=eid).execute()
+    populated = db_event.copy()
+    populated["event_info"] = {
+        "title": result.get("summary")
+    }
+    if (result.get("description")):
+        populated["event_info"]["description"] = result["description"]
+    if (result.get("location")):
+        populated["event_info"]["location"] = result["location"]
+    return populated
 
-#     getEvents (GET) – List events starting at our current time
+def populate_mongo_events (event__ids):
+    populated = []
+    for eid in event__ids:
+        query = events.find_one({ "_id": eid, "end": { "$gte": datetime.now() } })
+        if (query != None):
+            populated.append(query)
+    populated.sort( key=lambda event: event["start"] )
+    return populated
+
+def update_user_events (uid):
+    gcal_events = []
+    response = gcal.events().list(calendarId=DEFAULT_CALID).execute()
+    for gevent in response["items"]:
+        gcal_events.append({ "event_info": gevent["id"], "start": datetime.fromisoformat(gevent["start"]["dateTime"]), "end": datetime.fromisoformat(gevent["end"]["dateTime"]) })
+    # Go through user events and see which gcal events are new
+    query = users.find_one({ "user_id": uid })
+    db_eids = []
+    for uevent in populate_mongo_events(query["events"]):
+        db_eids.append(uevent["event_info"])
+    to_insert = []
+    # Find events not in our db
+    for event in gcal_events:
+        found = False
+        for eid in db_eids:
+            if (event["event_info"] == eid):
+                found = True
+                break
+        if not found:
+            to_insert.append(event)
+    # Insert them
+    inserted_ids = []
+    default_addons = { "priority": 2 }
+    for event in to_insert:
+        event.update(default_addons)
+        result = events.insert_one(event)
+        inserted_ids.append(result.inserted_id)
+    updated = query["events"] + inserted_ids
+    return users.find_one_and_update({ "user_id": uid }, { "$set": { "events": updated } }, return_document=ReturnDocument.AFTER)
+
+"""
+Routes we want
+
+    init (POST) – Create a new entry in our database for a new user, with a list of google calendar events appended with our own 
+        metadata about event priority and such. This should also take answers from the initial question screen in the app and 
+        and change information about the user's entry based on that.
+    
+    createEvent (POST) – Create new event in our database, marking it with event priority and other info, done through directly
+        inputting event info. .Update user's GCalendar.
+
+    createEventFromQuestions (POST) – Create new event in our database based on answers given by prompted questions. Updates 
+        the user's GCalendar as well. (involves ML)
+
+    editEvent (POST) – Edit event in our database, updating event in user's GCalendar as well
+
+    deleteEvent (POST) – Delete a user event in both our database and in the user's GCalendar as well
+
+    getEvents (GET) – List events starting at our current time
+
+"""
 
 @app.route("/")
 def index():
-    return "Hello World!"
+    return "Hello World"
 
-@app.route("/events")
-def getEvents():
-    return jsonify(
-        foo="bar"
-    )
+@app.route("/events", methods=["GET"])
+def get_events ():
+    # Get request args
+    uid = request.args.get("uid")
+    oauth_code = request.args.get("code")
+    # We'll probably just be using the default for our MVP
+    if (uid == None):
+        uid = DEFAULT_UID
+    query = update_user_events(uid)
+    # if (query == None):
+    #     # We will create a new gcalendar for this user
+    #     service = gcal # Fix this later
+    #     response = service.calendars().insert(body={
+    #         "summary": "Caren Calendar",
+    #         "description": "A calendar automatically generated by a scheduler."
+    #     }).execute()
+    #     # Lets add this uid into the database of users and create a new calendar in its calendars
+    #     doc = {
+    #         "user_id": uid,
+    #         "calendar_id": response["id"],
+    #         "events": []
+    #     }
+    #     result = users.insert_one(doc)
+    #     if (result.acknowledged):
+    #         query = doc
+    # Get the events
+    # { user_id: String, events: [ List ] }
+    # events = populate_mongo_events(query["events"])
+    events = populate_mongo_events(query["events"])
+    json_events = []
+    for event in events:
+        with_gcal = populate_gcal_event(DEFAULT_CALID, event)
+        del with_gcal["_id"]
+        json_events.append(with_gcal)
+    return jsonify(user_id=uid, cal_id=query["calendar_id"], events=json_events)
+
+@app.route("/events/schedule", methods=["POST"])
+def schedule_event ():
+    # passes in a uid and how many to schedule
+    uid = request.args.get("uid")
+    num_to_schedule = request.args.get("count")
+    # Get the user's events and build dictionary of starts and ends from it
+    query = users.find_one(user_id=uid)
+    events = populate_mongo_events(query["events"])
+    for event in events:
+        del event["_id"]
+    # Pass this into a scheduler
+
+    # Return event scheduled
+    return jsonify(new_event={ "this": "is placeholder" })
+    

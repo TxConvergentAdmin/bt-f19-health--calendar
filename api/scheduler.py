@@ -87,7 +87,7 @@ class Scheduler:
             calendarId=self.cid, 
             orderBy="startTime", 
             timeMax=max_string).execute()
-        events = response["list"]
+        events = response["items"]
         # Now add this to our LL
         for event in events:
             e = Event(
