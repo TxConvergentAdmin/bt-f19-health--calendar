@@ -1,103 +1,89 @@
 from datetime import timedelta, datetime
+from pytz import timezone
 
-RANGE = timedelta(days=1)
+CENTRAL = timezone("US/Central")
 
-class Event: 
-    """
-    LinkedList Node in a list of events
-    ...
-    Attributes
-    -----
-    start : datetime
-        Start of this event, derived by an iso formatted string
-    end : datetime
-        End of this event, derived by an iso formatted string
-    priority : int
-        From 1 - 10, with the higher priority giving it more importance. When scheduling an event with a high priority, lower 
-        priority events that conflict with the one to be scheduled may be removed or re-scheduled.
-    id: string
-        Event id from google calendar
-    next: Event
-        Next event chronologically after this one
-    """
+MORNING = (6, 12)
+AFTERNOON = (12, 18)
+EVENING = (18, 23)
+
+# GACK
+def converted_hour (dt):
+    res = dt.hour - 6
+    if (res < 0):
+        res = 24 - res
+    return res
+
+def in_sleep_range (dt, sleep_start, sleep_end):
+    if (sleep_start >= 12):
+        # starts sleeping before midnight
+        return converted_hour(dt) > sleep_start or converted_hour(dt) < sleep_end
+    else:
+        # late sleeper starting after midnight, simple comparison
+        return converted_hour(dt) > sleep_start and converted_hour(dt) < sleep_end
+
+def range_overlaps_slot_for_duration (range_start, range_end, slot, hours):
+    # our start falls into the slot
+    if converted_hour(range_start) >= slot[0] and converted_hour(range_start) <= slot[1]:
+        end = converted_hour(range_start) + hours
+        if end <= slot[1] and end <= converted_hour(range_end):
+            return range_start
+        else:
+            return None
+    # start doesn't fall into slot
+    starting_from_prev_day = False
+    range_delta = range_end - range_start
+    diff = slot[0] - converted_hour(range_start)
+    if converted_hour(range_start) > slot[0]:
+        starting_from_prev_day = True
+        diff = 24 - converted_hour(range_start)
+        diff += slot[0]
+    slot_from_start_delta = timedelta(hours=diff)
+    if range_delta - slot_from_start_delta >= timedelta(hours=hours):
+        result = range_start
+        if starting_from_prev_day:
+            hours_from_next = 24 - converted_hour(hours)
+            result += timedelta(hours=hours_from_next)
+        result.replace(hour=slot[0])
+        return result
+    return None
     
-    def __init__ (self, start, end, priority, event_id):
-        self.start = datetime.fromisoformat(start)
-        self.end = datetime.fromisoformat(end)
-        self.priority = priority
-        self.eid = event_id
-        self.next = None
-    
-    def add(self, event):
-        """
-        Add new event after this event. event.next must be set to None
-        ...
-        Parameters
-        -----
-        event : Event
-            An event object to be added after. If passed event is before, the state of the list doesn't change
-        """
-        # First check if this event is before this Event or if this already part of a list
-        if event.start < self.start or event.next != None:
-            return
-        # Try to find free space for the event
-        curr = self
-        while curr.next != None
-            # Can we add now?
-            if curr.next.start < event.start:
-                # No we can't
-                curr = curr.next
-            else
-                # next event starts at or after passed event's start, is there free space to fit the event from current event?
-                if event.end <= curr.next.start:
-                    # can add without rescheduling
-                    temp = curr.next
-                    curr.next = event
-                    event.next = temp
-                    return
-                else:
-                    # We see some conflict. 
-                    if event.priority <= curr.next.priority:
-                        # We can't do anything
-                        return
-                    # Add this and update the next chronological event
-                    temp = curr.next
-                    temp.start = event.end
-                    curr.next = event
-                    event.next = temp
-                    return
-        if curr.next == None
 
-
-
-class Scheduler:
-
-    def __init__ (self, service, cal_id):
-        self.root = None
-        self.gcal = service
-        self.cid = cal_id
-        self.build_from_gcal()
-
-    def build_from_gcal (self):
-        # start building my stuff from here
-        end_dt = datetime.now() + RANGE
-        max_string = end_dt.isoformat()
-        # get google calendar events
-        response = self.gcal.events().list(
-            calendarId=self.cid, 
-            orderBy="startTime", 
-            timeMax=max_string).execute()
-        events = response["items"]
-        # Now add this to our LL
-        for event in events:
-            e = Event(
-                    start=event["start"]["dateTime"],
-                    end=event["end"]["dateTime"],
-                    priority=5,
-                    event_id=event["id"]
-                )
-            if (self.root == None):
-                self.root = e
-            else:
-                self.root.add(e)
-
+def naive_schedule (events, hrs=1, sleep_start=23, sleep_end=7, preferred_time=AFTERNOON, max_days=3):
+    # can we fit before the first event
+    best_fit = None
+    now = CENTRAL.localize(datetime.now())
+    print(now.tzinfo)
+    print(events[0]["start"].tzinfo)
+    event_len = timedelta(hours=hrs)
+    if in_sleep_range(now, sleep_start, sleep_end) or in_sleep_range(now + event_len, sleep_start, sleep_end):
+        if sleep_start > sleep_end and converted_hour(now) < 24:
+            # Go to next day
+            hour_diff = 24 - converted_hour(now)
+            now = now + timedelta(hours=hour_diff)
+        now.replace(hour=sleep_end)
+    if (events[0]["start"] - now >= event_len):
+        best_fit = now
+    # find a good gap
+    max_date = CENTRAL.localize(datetime.now()) + timedelta(days=max_days)
+    for i in range(len(events) - 1):
+        # check if we haven't gone over our max days
+        if events[i]["start"] > max_date:
+            break
+        # if we haven't found a best fit, choose the first fit. else, find a better time, pref in our preferred time range
+        if best_fit == None:
+            if events[i + 1]["start"] - events[i]["end"] >= event_len:
+                best_fit = events[i]["start"]
+                print("found first fit")
+                print(best_fit.strftime("%b %d at %I:%M %p %Z"))
+        else:
+            # If we find something in our preferred location, break
+            better = range_overlaps_slot_for_duration(events[i]["end"], events[i + 1]["start"], preferred_time, hrs)
+            if (better):
+                print("found better fit")
+                print(better.strftime("%b %d at %I:%M %p %Z"))
+                best_fit = better
+                break
+    if best_fit:
+        return { "start": best_fit, "end": best_fit + event_len }
+    return None
