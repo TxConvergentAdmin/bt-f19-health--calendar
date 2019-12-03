@@ -1,10 +1,13 @@
 import React from "react"
-import { View, StyleSheet, Text } from "react-native"
+import { View, StyleSheet, Image } from "react-native"
 
 const Splash = (props) => {
     return (
         <View style={styles.splash}>
-            <Text style={styles.text}>Here is our splash :)</Text>
+            <Image 
+                style={{ width: 300, height: 300 }}
+                source={{ uri: "https://i.imgur.com/61iLs8X.png" }}
+            />
         </View>
     )
 }

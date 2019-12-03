@@ -44,10 +44,9 @@ def populate_gcal_event (cal_id, db_event):
 
 def populate_mongo_events (event__ids):
     populated = []
-    tz = pytz.timezone("UTC")
     for eid in event__ids:
-        query = events.find_one({ "_id": eid, "end.datetime":  { "$gte": datetime.now() } })
-        if (query != None):
+        query = events.find_one({ "_id": eid })
+        if (datetime.fromisoformat(query["end"]["string"]) >= datetime.now().astimezone()):
             query["start"] = datetime.fromisoformat(query["start"]["string"])
             query["end"] = datetime.fromisoformat(query["end"]["string"])
             populated.append(query)
@@ -75,13 +74,14 @@ def update_user_events (uid, force=False):
     # Go through user events and see which gcal events are new
     query = users.find_one({ "user_id": uid })
     db_eids = []
-    for uevent in populate_mongo_events(query["events"]):
+    for uevent in populate_mongo_events(query["events"]): # 
         db_eids.append(uevent["event_info"])
     to_insert = []
     # Find events not in our db
     for event in gcal_events:
         found = False
         for eid in db_eids:
+            # Found MongoDB event
             if (event["event_info"] == eid):
                 found = True
                 break
@@ -174,7 +174,7 @@ def schedule_event ():
     for event in user_events:
         del event["_id"]
     # Pass this into a scheduler
-    scheduled_slot = scheduler.naive_schedule(user_events)
+    scheduled_slot = scheduler.naive_schedule(user_events, hrs=event_info["priority"])
     # Insert new event into gcalendar
     body = {
         "summary": event_info["title"],

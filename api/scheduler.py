@@ -53,15 +53,14 @@ def naive_schedule (events, hrs=1, sleep_start=23, sleep_end=7, preferred_time=A
     # can we fit before the first event
     best_fit = None
     now = CENTRAL.localize(datetime.now())
-    print(now.tzinfo)
-    print(events[0]["start"].tzinfo)
     event_len = timedelta(hours=hrs)
     if in_sleep_range(now, sleep_start, sleep_end) or in_sleep_range(now + event_len, sleep_start, sleep_end):
+        print("helloooooo!!!")
         if sleep_start > sleep_end and converted_hour(now) < 24:
             # Go to next day
             hour_diff = 24 - converted_hour(now)
             now = now + timedelta(hours=hour_diff)
-        now.replace(hour=sleep_end)
+        now = now.replace(hour=sleep_end, minute=0)
     if (events[0]["start"] - now >= event_len):
         best_fit = now
     # find a good gap
@@ -73,7 +72,7 @@ def naive_schedule (events, hrs=1, sleep_start=23, sleep_end=7, preferred_time=A
         # if we haven't found a best fit, choose the first fit. else, find a better time, pref in our preferred time range
         if best_fit == None:
             if events[i + 1]["start"] - events[i]["end"] >= event_len:
-                best_fit = events[i]["start"]
+                best_fit = events[i]["end"]
                 print("found first fit")
                 print(best_fit.strftime("%b %d at %I:%M %p %Z"))
         else:

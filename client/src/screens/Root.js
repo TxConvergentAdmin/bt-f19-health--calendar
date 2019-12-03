@@ -5,6 +5,7 @@ import { createBottomTabNavigator } from "react-navigation-tabs"
 import Home from "./Home"
 import Calendar from "./Calendar"
 import CreateEvent from "./CreateEvent"
+import NewStudySession from "./NewStudySession"
 import {CustomFooter as Footer} from "../components/Footer.js"
 
 const tabNavigator = createBottomTabNavigator(
@@ -31,8 +32,9 @@ const tabNavigator = createBottomTabNavigator(
 
 const stackNavigator = createStackNavigator(
     {
-        "Tab Navigator": { screen: tabNavigator, navigationOptions: { title: "Insert App Name Here" } },
-        "Create Event": { screen: CreateEvent, navigationOptions: { title: "Create A New Event" } }
+        "Tab Navigator": { screen: tabNavigator, navigationOptions: { title: "Care'n" } },
+        "Create Event": { screen: CreateEvent, navigationOptions: { title: "Create A New Event" } },
+        "New Study Session": { screen: NewStudySession, navigationOptions: { title: "Start New Study Session"} }
     }
     
 )

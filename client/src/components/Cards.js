@@ -1,22 +1,49 @@
 import React, { Component } from "react"
-import { StyleSheet, View, Alert } from "react-native"
+import { Animated, StyleSheet, View, TextInput } from "react-native"
 import { Container, Title, Text, Body, Button, Card, CardItem } from "native-base"
 import moment from "moment"
 import Slider from "./Slider"
 
+const backgroundStyleNames = { red: "backgroundRed", yellow: "backgroundYellow", blue: "backgroundBlue" }
+const COLORS = ["red", "yellow", "blue"]
+
 class DefaultCard extends Component {
+
+    constructor () {
+        super()
+        this.fade = new Animated.Value(0)
+    }
+
+    componentDidMount () {
+        Animated.timing(this.fade, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true
+        }).start()
+    }
+
+    componentWillUnmount () {
+        Animated.timing(this.fade, {
+            toValue: 0,
+            duration: 500,
+            useNativeDriver: true
+        }).start()
+    }
+
     render () {
+        const color = this.props.backgroundColor
+        const myStyles = [styles.card]
+        if (color)
+            myStyles.push(styles[backgroundStyleNames[color]])
         return (
-            <Card style={styles.card}>
-                <CardItem header style={styles.cardHeader}>
-                    <Text>{this.props.title}</Text>
-                </CardItem>
-                <CardItem>
-                    <Body>
-                        {this.props.children}
-                    </Body>
-                </CardItem>
-            </Card>
+            <Animated.View style={[myStyles, { opacity: this.fade }]}>
+                <View>
+                    <Text style={styles.cardHeader}>{this.props.title}</Text>
+                </View>
+                <View style={styles.cardBody}>
+                    {this.props.children}
+                </View>
+            </Animated.View>
         )
     }
 }
@@ -62,17 +89,65 @@ class ButtonQuestionCard extends Component {
     }
 }
 
+class TextQuestionCard extends Component {
+
+    constructor (props) {
+        super(props)
+        this.state = {
+            text: null,
+            focused: false
+        }
+        this.handleSubmit = this.handleSubmit.bind(this)
+    }
+
+    handleTextChange (text) {
+        this.setState({ text: text })
+    }
+
+    handleSubmit () {
+        const text = this.state.text
+        console.log(text)
+        this.props.onAnswer(text)
+    }
+
+    render () {
+        const { text, focused } = this.state
+        const myStyles = [styles.textBox]
+        if (focused)
+            myStyles.push(styles.textBoxFocused)
+        return (
+            <QuestionCard question={this.props.question}>
+                <View style={styles.textFlexCon}>
+                    <TextInput 
+                        style={myStyles} 
+                        value={text} 
+                        onChangeText={(text) => this.handleTextChange(text)} 
+                        onFocus={() => this.setState({ focused: true })}
+                        onBlur={() => this.setState({ focused: false })}
+                    />
+                    <Button small onPress={this.handleSubmit} style={styles.cardTextSubmit}>
+                        <Text>Submit</Text>
+                    </Button>
+                </View>
+            </QuestionCard>
+        )
+    }
+}
+
 class SliderQuestionCard extends Component {
 
-    constructor () {
-        super()
+    constructor (props) {
+        super(props)
         this.state = {
-            val: 0
+            val: this.props.minValue
         }
     }
 
     updateState (value) {
-        this.setState({ val: value })
+        let newVal = value
+        if (this.props.wholeNums === true) 
+            newVal = Math.floor(newVal)
+        this.setState({ val: newVal })
     }
 
     handleSubmit () {
@@ -108,13 +183,12 @@ class EventCard extends Component {
 
     constructor (props) {
         super(props)
-        this.state = { timeUntilEvent: this.getTimeUntilEvent() }
+        this.state = { timeUntilEvent: this.getTimeUntilEvent(), bgChoice: null }
     }
 
     componentDidMount () {
         setInterval(() => {
             const tu = this.getTimeUntilEvent()
-            console.log(tu)
             this.setState({ timeUntilEvent: tu })
         }, 1000 * 60)
     }
@@ -122,7 +196,7 @@ class EventCard extends Component {
     // date is a Date object, returns a string
     getTimeUntilEvent () {
         const event = this.props.eventObject
-        let timeUntil = (event.date - new Date()) / 1000 // Put in terms of seconds
+        let timeUntil = (event.startDate - new Date()) / 1000 // Put in terms of seconds
         if (timeUntil > 0) {
             let unit
             // Put in terms of either days, hours, or minutes
@@ -143,26 +217,41 @@ class EventCard extends Component {
         }
     }
 
+    componentDidMount () {
+        this.setState({ bgChoice: COLORS[ Math.floor(Math.random() * COLORS.length) ] })
+    }
+
     render () {
         const event = this.props.eventObject || defaultEvent
         const tu = this.state.timeUntilEvent
+        const bgChoice = this.state.bgChoice
+        const localeOps = { timeZone: "America/Chicago", hour12: true, month: "long", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }
         return (
-            <DefaultCard title={ tu === null ? `${event.title} happening now.` : `${event.title} in ${tu}.` }>
-                <Text>At {`${event.location.line1}, ${event.location.city} ${event.location.state}`}</Text>
+            <DefaultCard title={ tu === null ? `${event.title} happening now.` : `${event.title} in ${tu}.` } backgroundColor={bgChoice}>
+                <Text style={ {fontStyle: "italic", color: "#404040"} }>From {event.startDate.toLocaleString("en", localeOps)}</Text>
+                <Text style={ {fontStyle: "italic", color: "#404040", marginBottom: 2} }>To {event.endDate.toLocaleString("en", localeOps)}</Text>
+                <Text style={ {color: "#404040"} }>{ event.location ? `At ${event.location}` : null}</Text>
             </DefaultCard>
         )
     }
 
 }
 
-const styles = {
+const styles = StyleSheet.create({
     card: {
         width: "90%",
-        marginVertical: 0
+        marginVertical: 4,
+        padding: 16,
+        backgroundColor: "#f0f0f0",
+        borderRadius: 4
     },
     cardHeader: {
-        marginBottom: 0,
-        paddingBottom: 2
+        paddingVertical: 2,
+        fontSize: 24,
+        fontWeight: "bold"
+    },
+    cardBody: {
+        fontSize: 16
     },
     cardChildCon: {
         marginVertical: 8
@@ -170,10 +259,15 @@ const styles = {
     btnFlexCon: {
         display: "flex",
         flexDirection: "row",
-        alignItems: "space-between",
-        justifyContent: "space-between"
+        alignItems: "center",
+        justifyContent: "center"
     },
     sliderFlexCon: {
+        display: "flex",
+        flexDirection: "row",
+        width: "100%"
+    },
+    textFlexCon: {
         display: "flex",
         flexDirection: "row",
         width: "100%"
@@ -187,7 +281,30 @@ const styles = {
     },
     cardBtn: {
         marginRight: 4,
-    }
-}
+    },
+    backgroundRed: {
+        backgroundColor: "#e5a2a2",
+        color: "#f8f8f8"
+    },
+    backgroundYellow: {
+        backgroundColor: "#ffffc1"
+    },
+    backgroundBlue: {
+        backgroundColor: "#72d0ea",
+        color: "#f8f8f8"
+    },
+    textBox: {
+        borderBottomWidth: 2,
+        borderBottomColor: "#606060",
+        flex: 1,
+        marginRight: 8
+    },
+    textBoxFocused: {
+        borderBottomColor: "#b0b0b0",
+    },
+    cardTextSubmit: {
+        flex: 0
+    },
+})
 
-export { EventCard, ButtonQuestionCard, SliderQuestionCard }
+export { EventCard, ButtonQuestionCard, SliderQuestionCard, TextQuestionCard }

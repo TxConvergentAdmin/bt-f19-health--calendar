@@ -32,8 +32,19 @@ class EventList extends Component {
     }
 
     async getEvents () {
+        console.log("Getting!")
+        let result = await fetch("http://localhost:5000/events").then((response) => response.json())
         this.setState({ 
-            events: [defaultEvent]
+            events: result.events.map((event, i) => {
+                return {
+                    title: event.event_info.title,
+                    startDate: new Date(event.start),
+                    endDate: new Date(event.end),
+                    location: event.event_info.location,
+                    priority: event.priority,
+                    type: event.type
+                }
+            })
          })
     }
 
