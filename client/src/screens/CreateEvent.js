@@ -1,6 +1,6 @@
 import React, { Component } from "react"
-import { View, StyleSheet } from "react-native"
-import { Container, Content, Text, Fab, Icon, Button } from "native-base"
+import { View, StyleSheet, TextInput } from "react-native"
+import { Container, Content, Text, Fab, Icon, Button, Item, Input } from "native-base"
 
 
 class CreateEvent extends Component {
@@ -24,13 +24,23 @@ class CreateEvent extends Component {
             <Container>
                 <Content>
                     <Text style={styles.title}>Create Event</Text>
-                   {/* <View style={styles.cardContainer}> */}
-                        <Text style={styles.subtitle}>Enter Title</Text>
+                        {/* {<Item regular>
+                            <Input placeholder='Regular Textbox' />
+                        </Item>} */}
                         {/* user input */}
                    {/*} </View> */}
                    {/*} <View style={styles.cardContainer}> */}
-                        <Text style={styles.subtitle}>Add Description</Text>
-                        {/* user input */}
+                        <View style={styles.flexCon}>
+                            <Text style={styles.subtitle}>Add Description</Text>
+                            <TextInput style={styles.textbox} />
+
+                            <Text style={styles.subtitle}>Enter Title</Text>
+                            <TextInput style={styles.textbox} />
+
+                            <Text style={styles.subtitle}>Duration of Event (in hours)</Text>
+                            <TextInput style={styles.textbox} />
+                        </View>
+                        
                    {/*} </View> */}
                    <Text style={styles.subtitle}>Type of Event</Text>
                    <View style={styles.flexView}>
@@ -46,11 +56,6 @@ class CreateEvent extends Component {
                         </Button>
                     </View>
                 </Content>
-                <View>
-                    <Fab onPress={() => this.props.navigation.navigate("Create Event")} >
-                        <Icon name="ios-add"/>
-                    </Fab>
-                </View>
             </Container>
         )
     }
@@ -81,6 +86,19 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center", 
         flexDirection: "column"
+    }, 
+    textbox: {
+        borderBottomWidth: 2,
+        borderBottomColor: "#606060",
+        padding: 4,
+        marginVertical: 12,
+        fontSize: 16,
+        width: "70%",
+        backgroundColor: "#f0f0f0"
+    },
+    flexCon: {
+        display: "flex",
+        alignItems: "center"
     }
 })
 
